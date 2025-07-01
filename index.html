@@ -1,0 +1,695 @@
+<!DOCTYPE html>
+<html lang="fr" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>IntelliGallery</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
+    <script src="https://unpkg.com/lucide@latest"></script>
+
+    <style>
+        :root {
+            --font-sans: 'Inter', sans-serif;
+            --color-primary: #8a5cf6;
+            --color-primary-translucent: rgba(138, 92, 246, 0.1);
+            --color-green: #22c55e;
+            --background-dark: #0c0a09;
+            --background-glass-dark: rgba(28, 25, 23, 0.25);
+            --text-primary-dark: #f5f5f4;
+            --text-secondary-dark: #a8a29e;
+            --text-tertiary-dark: #78716c;
+            --border-dark: rgba(245, 245, 244, 0.2);
+            --border-subtle-dark: rgba(245, 245, 244, 0.1);
+            --background-light: #f5f5f4;
+            --background-glass-light: rgba(255, 255, 255, 0.4);
+            --text-primary-light: #1c1917;
+            --text-secondary-light: #57534e;
+            --text-tertiary-light: #a8a29e;
+            --border-light: rgba(28, 25, 23, 0.1);
+            --border-subtle-light: rgba(28, 25, 23, 0.05);
+        }
+
+        .dark {
+            --color-background: var(--background-dark);
+            --color-background-glass: var(--background-glass-dark);
+            --color-text-primary: var(--text-primary-dark);
+            --color-text-secondary: var(--text-secondary-dark);
+            --color-text-tertiary: var(--text-tertiary-dark);
+            --color-border: var(--border-dark);
+            --color-border-subtle: var(--border-subtle-dark);
+        }
+
+        .light {
+            --color-background: var(--background-light);
+            --color-background-glass: var(--background-glass-light);
+            --color-text-primary: var(--text-primary-light);
+            --color-text-secondary: var(--text-secondary-light);
+            --color-text-tertiary: var(--text-tertiary-light);
+            --color-border: var(--border-light);
+            --color-border-subtle: var(--border-subtle-light);
+        }
+
+        *, *::before, *::after { box-sizing: border-box; }
+
+        body {
+            background-color: var(--color-background);
+            font-family: var(--font-sans);
+            margin: 0;
+            overscroll-behavior: none;
+            color: var(--color-text-primary);
+        }
+        
+        .app-container { max-width: 480px; margin: auto; height: 100vh; display: flex; flex-direction: column; position: relative; overflow: hidden; }
+        .glass-bg-container { position: absolute; inset: 0; background-image: radial-gradient(circle at 10% 20%, var(--color-primary-translucent), transparent 50%), radial-gradient(circle at 80% 90%, var(--color-primary-translucent), transparent 50%); z-index: -1; transition: opacity 0.5s ease; }
+        .main-content { flex-grow: 1; overflow-y: auto; padding: 1.5rem 1rem 7rem 1rem; }
+        .main-content::-webkit-scrollbar { width: 0; background: transparent; }
+
+        .screen { display: none; animation: fadeIn 0.5s ease; }
+        .screen.active { display: block; }
+        @keyframes fadeIn { from { opacity: 0; filter: blur(4px); } to { opacity: 1; filter: blur(0px); } }
+
+        .screen-title { font-size: 2.25rem; font-weight: 800; margin-bottom: 1.5rem; color: var(--color-text-primary); }
+        .section-title { font-weight: 600; margin-bottom: 0.75rem; color: var(--color-text-secondary); }
+
+        .glass-card { background-color: var(--color-background-glass); backdrop-filter: blur(24px); -webkit-backdrop-filter: blur(24px); border: 1px solid var(--color-border); border-radius: 1.25rem; transition: background-color 0.3s, border 0.3s; padding: 1rem; }
+        .input { background-color: var(--color-background-glass); border: 1px solid var(--color-border); border-radius: 1rem; padding: 0.85rem 1rem; width: 100%; color: var(--color-text-primary); transition: all 0.2s ease; font-size: 1rem; font-family: var(--font-sans); }
+        .input:focus { outline: none; border-color: var(--color-primary); box-shadow: 0 0 0 3px var(--color-primary-translucent); }
+        .btn { padding: 0.75rem 1.25rem; border-radius: 1rem; font-weight: 600; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; gap: 0.5rem; transition: all 0.2s ease; border: none; font-family: var(--font-sans); }
+        .btn:active { transform: scale(0.95); }
+        .btn-primary { background-color: var(--color-primary); color: white; }
+        .btn-secondary { background-color: var(--color-border); color: var(--color-text-primary); }
+
+        /* --- Gallery Screen --- */
+        .photo-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.5rem; }
+        .photo-item { position: relative; cursor: pointer; overflow: hidden; border-radius: 0.75rem; aspect-ratio: 1 / 1; background-color: var(--color-border-subtle); }
+        .photo-item img { width: 100%; height: 100%; object-fit: cover; transition: transform 0.3s ease; }
+        .photo-item:hover img { transform: scale(1.05); }
+        .empty-gallery { text-align: center; padding: 4rem 1rem; color: var(--color-text-secondary); display: flex; flex-direction: column; align-items: center; justify-content: center; }
+        .empty-gallery i { margin-bottom: 1rem; }
+        .add-photos-btn-container { position: fixed; bottom: 6.5rem; left: 50%; transform: translateX(-50%); z-index: 10; }
+
+        /* --- Analysis Screen --- */
+        .analysis-container { display: flex; flex-direction: column; gap: 1rem; }
+        .analysis-image-container { position: relative; width: 100%; aspect-ratio: 4 / 3; border-radius: 1.25rem; overflow: hidden; }
+        .analysis-image-container img { width: 100%; height: 100%; object-fit: cover; }
+        .analysis-section .tag { background-color: var(--color-border); color: var(--color-text-secondary); padding: 0.25rem 0.5rem; border-radius: 0.5rem; font-size: 0.75rem; font-weight: 600;}
+        .analysis-actions { display: flex; flex-direction: column; gap: 0.75rem; }
+        .analysis-result p { margin-top: 0.25rem; color: var(--color-text-secondary); }
+        .analysis-result h4 { margin: 0 0 0.5rem; font-weight: 600; color: var(--color-text-primary); }
+        .shopping-result { display: flex; justify-content: space-between; align-items: center;}
+
+        /* --- Settings Screen --- */
+        .settings-section { margin-bottom: 2rem; }
+        .settings-item { display: flex; justify-content: space-between; align-items: center; padding: 1rem; }
+
+        /* --- Bottom Nav --- */
+        .bottom-nav { position: absolute; left: 1rem; right: 1rem; bottom: 1rem; height: 4.5rem; padding: .75rem; background-color: var(--color-background-glass); backdrop-filter: blur(24px); -webkit-backdrop-filter: blur(24px); border: 1px solid var(--color-border); display: flex; border-radius: 1.25rem; justify-content: space-around; z-index: 10; }
+        .nav-item { position: relative; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 0.25rem; color: var(--color-text-tertiary); background: none; border: none; cursor: pointer; padding: 0.5rem; border-radius: 0.5rem; transition: all 0.2s ease; width: 70px; flex-grow: 1; }
+        .nav-item.active { color: var(--color-primary); }
+        .nav-label { font-size: 0.75rem; font-weight: 600; }
+        .active-indicator { position: absolute; bottom: -10px; height: 4px; width: 24px; background-color: var(--color-primary); border-radius: 2px; transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
+
+        /* --- Modals & Overlays --- */
+        .modal-backdrop, .loading-overlay, .error-banner-container, .slideshow-overlay { position: fixed; inset: 0; z-index: 100; display: flex; align-items: center; justify-content: center; background-color: rgba(0,0,0,0.5); backdrop-filter: blur(10px); opacity: 0; visibility: hidden; transition: opacity 0.3s, visibility 0.3s; }
+        .modal-backdrop.visible, .loading-overlay.visible, .error-banner-container.visible, .slideshow-overlay.visible { opacity: 1; visibility: visible; }
+        .modal-content { max-width: 400px; width: 90%; text-align: center; }
+        .error-banner-container { align-items: flex-end; padding: 1rem; padding-bottom: 6.5rem; background: none; backdrop-filter: none; pointer-events: none; }
+        .error-banner-container.visible { pointer-events: auto; }
+        .error-banner { width: 100%; max-width: 464px; margin: auto; background-color: #be123c; color: white; padding: 0.75rem 1rem; border-radius: 1.25rem; display: flex; align-items: center; gap: 0.75rem; box-shadow: 0 10px 25px -5px rgba(0,0,0,0.4); transform: translateY(20px); transition: transform 0.3s; }
+        .error-banner-container.visible .error-banner { transform: translateY(0); }
+        .loading-overlay { z-index: 200; backdrop-filter: blur(4px); }
+        .loading-content { display: flex; flex-direction: column; align-items: center; gap: 1rem; padding: 2rem; border-radius: 1.5rem; }
+        .loading-content .icon-spin { animation: spin 1s linear infinite; }
+        @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+
+        /* --- Slideshow --- */
+        .slideshow-overlay { background-color: rgba(0,0,0,0.8); backdrop-filter: blur(16px); z-index: 150; }
+        .slideshow-content { width: 100%; height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; position: relative; }
+        .slideshow-image { max-width: 100%; max-height: 80vh; object-fit: contain; border-radius: 1rem; }
+        .slideshow-nav { position: absolute; top: 50%; transform: translateY(-50%); width: 100%; display: flex; justify-content: space-between; padding: 1rem; }
+        .slideshow-nav button { background-color: rgba(255,255,255,0.1); border: none; color: white; border-radius: 50%; width: 44px; height: 44px; }
+        .slideshow-close { position: absolute; top: 1.5rem; right: 1.5rem; background-color: rgba(255,255,255,0.1); border: none; color: white; border-radius: 50%; width: 44px; height: 44px; }
+        .slideshow-counter { position: absolute; bottom: 1.5rem; left: 50%; transform: translateX(-50%); background-color: rgba(0,0,0,0.5); color: white; padding: 0.5rem 1rem; border-radius: 1rem; font-size: 0.875rem; }
+    </style>
+</head>
+<body>
+
+    <div id="app" class="app-container">
+        <div class="glass-bg-container"></div>
+        <main class="main-content">
+            <!-- Gallery Screen -->
+            <div id="screen-gallery" class="screen active">
+                <h1 class="screen-title">IntelliGallery</h1>
+                <div id="photo-grid" class="photo-grid"></div>
+                <div id="empty-gallery-placeholder" class="empty-gallery">
+                     <i data-lucide="image" style="width:48px; height:48px;"></i>
+                     <p>Votre galerie est vide.</p>
+                     <p>Ajoutez des photos pour commencer.</p>
+                </div>
+            </div>
+
+            <!-- Analysis Screen -->
+            <div id="screen-analysis" class="screen">
+                 <button id="back-to-gallery-btn" class="btn btn-secondary" style="position: absolute; top: 1.5rem; left: 1rem; z-index: 5; padding: 0.5rem; border-radius: 50%; width: 40px; height: 40px;"><i data-lucide="arrow-left"></i></button>
+                 <h1 class="screen-title" style="text-align:center;">Analyse IA</h1>
+                 <div id="analysis-content" class="analysis-container">
+                    <!-- Content generated by JS -->
+                 </div>
+            </div>
+
+            <!-- Settings Screen -->
+            <div id="screen-settings" class="screen">
+                <h1 class="screen-title">Paramètres</h1>
+                <div class="settings-section">
+                    <h2 class="section-title">Apparence</h2>
+                    <div class="settings-item glass-card">
+                        <span>Thème</span>
+                        <button id="theme-toggle-btn" class="btn btn-secondary" style="display:flex; align-items:center; gap:0.5rem;">
+                            <i data-lucide="sun" style="width:16px; height:16px;"></i><span id="theme-toggle-text">Passer en Clair</span>
+                        </button>
+                    </div>
+                </div>
+                <div class="settings-section">
+                    <h2 class="section-title">Configuration API</h2>
+                    <form id="api-key-form" class="glass-card" style="display:flex; flex-direction:column; padding:1rem; gap:0.75rem;">
+                        <label for="apiKeyInput" style="font-weight:600; color:var(--color-text-secondary); display:flex; align-items:center; gap:0.5rem;">
+                            <i data-lucide="key-round" style="width:16px; height:16px;"></i> Clé API Gemini
+                        </label>
+                        <p style="font-size:0.875rem; color:var(--color-text-tertiary); margin-bottom:0.5rem; margin-top:0;">Votre clé est stockée uniquement sur votre appareil.</p>
+                        <input id="apiKeyInput" type="password" class="input w-full" placeholder="Entrez votre clé API Google AI" style="width:100%;">
+                        <button type="submit" class="btn btn-primary" style="width:100%; margin-top:0.75rem;">
+                            <span id="save-key-btn-text" style="display:flex; align-items:center; gap:0.5rem;"><i data-lucide="save" style="width:16px; height:16px;"></i>Sauvegarder</span>
+                        </button>
+                    </form>
+                </div>
+                 <div class="settings-section">
+                    <h2 class="section-title">Données</h2>
+                    <div class="settings-item glass-card">
+                        <span>Vider la galerie</span>
+                        <button id="clear-gallery-btn" class="btn btn-secondary" style="color: #f43f5e;"><i data-lucide="trash-2" style="width:16px; height:16px;"></i> Tout supprimer</button>
+                    </div>
+                </div>
+            </div>
+        </main>
+        
+        <div id="add-photos-btn-container" class="add-photos-btn-container">
+             <input type="file" id="photo-upload-input" multiple accept="image/*" style="display: none;">
+             <button id="add-photos-btn" class="btn btn-primary"><i data-lucide="plus"></i> Ajouter des photos</button>
+        </div>
+
+        <!-- Bottom Navigation -->
+        <nav class="bottom-nav">
+            <button class="nav-item active" data-screen="gallery"><i data-lucide="layout-grid"></i><span class="nav-label">Galerie</span></button>
+            <button class="nav-item" data-screen="analysis" disabled><i data-lucide="sparkles"></i><span class="nav-label">Analyse</span></button>
+            <button class="nav-item" data-screen="settings"><i data-lucide="settings"></i><span class="nav-label">Paramètres</span></button>
+            <div class="active-indicator"></div>
+        </nav>
+    </div>
+
+    <!-- Modals and Overlays -->
+    <div id="api-key-modal" class="modal-backdrop">
+        <div class="modal-content glass-card" style="padding: 1.5rem;">
+            <i data-lucide="key-round" style="margin:auto; display:block; color:var(--color-primary); margin-bottom:1rem; width:40px; height:40px;"></i>
+            <h2 style="font-size:1.25rem; font-weight:bold; margin-bottom:0.5rem;">Clé API Gemini Requise</h2>
+            <p style="color:var(--color-text-secondary); margin-bottom:1rem;">Veuillez entrer votre clé API Google AI pour activer les fonctionnalités intelligentes.</p>
+            <form id="modal-api-key-form" style="display:flex; flex-direction:column; gap:0.75rem;">
+                <input id="modal-api-key-input" type="password" placeholder="Entrez votre clé API ici" class="input" style="text-align:center;" autofocus>
+                <button type="submit" class="btn btn-primary" disabled>Sauvegarder et commencer</button>
+            </form>
+        </div>
+    </div>
+
+    <div id="loading-overlay" class="loading-overlay">
+        <div class="loading-content glass-card">
+            <i data-lucide="loader-2" class="icon-spin" style="width:32px; height:32px; color:var(--color-primary);"></i>
+            <p id="loading-message">L'IA analyse...</p>
+        </div>
+    </div>
+    
+    <div id="error-banner-container" class="error-banner-container">
+        <div class="error-banner">
+            <i data-lucide="alert-circle" style="width:20px; height:20px; flex-shrink: 0;"></i>
+            <p id="error-message" style="flex-grow:1; margin:0;"></p>
+            <button id="error-close-btn" class="btn-icon" style="padding:0; background:none; border:none; color:white; cursor:pointer;"><i data-lucide="x" style="width:20px; height:20px;"></i></button>
+        </div>
+    </div>
+
+    <div id="slideshow-overlay" class="slideshow-overlay">
+        <div class="slideshow-content">
+            <button id="slideshow-close-btn" class="slideshow-close"><i data-lucide="x"></i></button>
+            <img id="slideshow-image" class="slideshow-image" src="" alt="Diaporama IA">
+            <div class="slideshow-nav">
+                <button id="slideshow-prev-btn"><i data-lucide="arrow-left"></i></button>
+                <button id="slideshow-next-btn"><i data-lucide="arrow-right"></i></button>
+            </div>
+            <div id="slideshow-counter" class="slideshow-counter"></div>
+        </div>
+    </div>
+
+    <script>
+    document.addEventListener('DOMContentLoaded', () => {
+        const app = {
+            state: {
+                photos: [],
+                activeScreen: 'gallery',
+                selectedPhotoId: null,
+                theme: 'dark',
+                apiKey: null,
+                error: null,
+                loadingMessage: '',
+                slideshow: {
+                    isActive: false,
+                    photos: [],
+                    currentIndex: 0,
+                }
+            },
+
+            elements: {
+                root: document.documentElement,
+                screens: document.querySelectorAll('.screen'),
+                navItems: document.querySelectorAll('.nav-item'),
+                activeNavIndicator: document.querySelector('.active-indicator'),
+                photoGrid: document.getElementById('photo-grid'),
+                emptyGalleryPlaceholder: document.getElementById('empty-gallery-placeholder'),
+                addPhotosBtn: document.getElementById('add-photos-btn'),
+                photoUploadInput: document.getElementById('photo-upload-input'),
+                addPhotosBtnContainer: document.getElementById('add-photos-btn-container'),
+                analysisContent: document.getElementById('analysis-content'),
+                backToGalleryBtn: document.getElementById('back-to-gallery-btn'),
+                navAnalysisBtn: document.querySelector('.nav-item[data-screen="analysis"]'),
+                themeToggleBtn: document.getElementById('theme-toggle-btn'),
+                apiKeyForm: document.getElementById('api-key-form'),
+                apiKeyInput: document.getElementById('apiKeyInput'),
+                saveKeyBtnText: document.getElementById('save-key-btn-text'),
+                clearGalleryBtn: document.getElementById('clear-gallery-btn'),
+                apiKeyModal: document.getElementById('api-key-modal'),
+                modalApiKeyForm: document.getElementById('modal-api-key-form'),
+                modalApiKeyInput: document.getElementById('modal-api-key-input'),
+                loadingOverlay: document.getElementById('loading-overlay'),
+                loadingMessage: document.getElementById('loading-message'),
+                errorBanner: document.getElementById('error-banner-container'),
+                errorMessage: document.getElementById('error-message'),
+                errorCloseBtn: document.getElementById('error-close-btn'),
+                slideshowOverlay: document.getElementById('slideshow-overlay'),
+                slideshowImage: document.getElementById('slideshow-image'),
+                slideshowCloseBtn: document.getElementById('slideshow-close-btn'),
+                slideshowPrevBtn: document.getElementById('slideshow-prev-btn'),
+                slideshowNextBtn: document.getElementById('slideshow-next-btn'),
+                slideshowCounter: document.getElementById('slideshow-counter'),
+            },
+
+            init() {
+                this.loadState();
+                this.attachEventListeners();
+                this.render();
+                if (!this.state.apiKey) {
+                    this.showApiKeyModal(true);
+                }
+            },
+            
+            setState(newState) {
+                const oldTheme = this.state.theme;
+                // Deep merge for slideshow state
+                if (newState.slideshow) {
+                    newState.slideshow = { ...this.state.slideshow, ...newState.slideshow };
+                }
+                Object.assign(this.state, newState);
+                
+                if (newState.theme && newState.theme !== oldTheme) {
+                    this.renderTheme();
+                }
+
+                this.render();
+                this.saveState();
+            },
+            
+            loadState() {
+                try {
+                    this.state.theme = localStorage.getItem('intelligallery-theme') || 'dark';
+                    this.state.apiKey = localStorage.getItem('intelligallery-apikey');
+                    const photos = JSON.parse(localStorage.getItem('intelligallery-photos') || '[]');
+                    // Ensure analysis object exists
+                    this.state.photos = photos.map(p => ({ ...p, analysis: p.analysis || {} }));
+                } catch (e) {
+                    console.error("Failed to load state", e);
+                    this.showError("Impossible de charger les données locales.");
+                }
+            },
+
+            saveState() {
+                try {
+                    localStorage.setItem('intelligallery-theme', this.state.theme);
+                    if (this.state.apiKey) localStorage.setItem('intelligallery-apikey', this.state.apiKey);
+                    localStorage.setItem('intelligallery-photos', JSON.stringify(this.state.photos));
+                } catch (e) {
+                    console.error("Failed to save state", e);
+                    this.showError("Impossible de sauvegarder les données.");
+                }
+            },
+
+            attachEventListeners() {
+                const { elements } = this;
+                elements.navItems.forEach(item => item.addEventListener('click', () => {
+                    if (!item.disabled) this.setState({ activeScreen: item.dataset.screen });
+                }));
+                elements.addPhotosBtn.addEventListener('click', () => elements.photoUploadInput.click());
+                elements.photoUploadInput.addEventListener('change', (e) => this.handlePhotoUpload(e));
+                elements.photoGrid.addEventListener('click', (e) => this.handlePhotoClick(e));
+                elements.backToGalleryBtn.addEventListener('click', () => this.setState({ activeScreen: 'gallery', selectedPhotoId: null }));
+                elements.analysisContent.addEventListener('click', (e) => this.handleAnalysisAction(e));
+                elements.themeToggleBtn.addEventListener('click', () => {
+                    this.setState({ theme: this.state.theme === 'dark' ? 'light' : 'dark' });
+                });
+                elements.apiKeyForm.addEventListener('submit', e => {
+                    e.preventDefault();
+                    this.handleApiKeySave(elements.apiKeyInput.value);
+                });
+                elements.modalApiKeyForm.addEventListener('submit', e => {
+                    e.preventDefault();
+                    const key = elements.modalApiKeyInput.value.trim();
+                    if (key) {
+                        this.handleApiKeySave(key);
+                        this.showApiKeyModal(false);
+                    }
+                });
+                elements.modalApiKeyInput.addEventListener('input', e => {
+                   elements.modalApiKeyForm.querySelector('button').disabled = !e.target.value.trim();
+                });
+                elements.clearGalleryBtn.addEventListener('click', () => {
+                    // Replaced confirm with a simple approach for now. A custom modal would be better.
+                    if (window.prompt("Pour confirmer, tapez 'SUPPRIMER' ci-dessous.") === 'SUPPRIMER') {
+                        this.setState({ photos: [], selectedPhotoId: null, activeScreen: 'gallery' });
+                    }
+                });
+                elements.errorCloseBtn.addEventListener('click', () => this.showError(null));
+
+                // Slideshow listeners
+                elements.slideshowCloseBtn.addEventListener('click', () => this.setState({ slideshow: { isActive: false } }));
+                elements.slideshowNextBtn.addEventListener('click', () => this.navigateSlideshow(1));
+                elements.slideshowPrevBtn.addEventListener('click', () => this.navigateSlideshow(-1));
+            },
+
+            handlePhotoUpload(event) {
+                const files = event.target.files;
+                if (!files.length) return;
+
+                this.showLoading(true, `Chargement de ${files.length} photo(s)...`);
+
+                const readPromises = Array.from(files).map(file => {
+                    return new Promise((resolve, reject) => {
+                        const reader = new FileReader();
+                        reader.onload = e => {
+                            const newPhoto = {
+                                id: `photo-${Date.now()}-${Math.random()}`,
+                                src: e.target.result,
+                                analysis: {}
+                            };
+                            resolve(newPhoto);
+                        };
+                        reader.onerror = reject;
+                        reader.readAsDataURL(file);
+                    });
+                });
+
+                Promise.all(readPromises).then(newPhotos => {
+                    this.setState({ photos: [...this.state.photos, ...newPhotos] });
+                    this.showLoading(false);
+                }).catch(err => {
+                    console.error(err);
+                    this.showError("Erreur lors de la lecture des fichiers.");
+                    this.showLoading(false);
+                });
+                
+                event.target.value = '';
+            },
+
+            handlePhotoClick(event) {
+                const photoItem = event.target.closest('.photo-item');
+                if (photoItem) {
+                    const photoId = photoItem.dataset.id;
+                    this.setState({ activeScreen: 'analysis', selectedPhotoId: photoId });
+                }
+            },
+
+            async handleAnalysisAction(event) {
+                const button = event.target.closest('button[data-action]');
+                if (!button) return;
+
+                const action = button.dataset.action;
+                const photo = this.state.photos.find(p => p.id === this.state.selectedPhotoId);
+                if (!photo || !this.aiService) return;
+
+                const base64Data = photo.src.split(',')[1];
+                let result = null;
+
+                switch (action) {
+                    case 'caption':
+                        result = await this.aiService.getCaption(base64Data);
+                        if (result) photo.analysis.caption = result.caption;
+                        break;
+                    case 'tags':
+                        result = await this.aiService.getTags(base64Data);
+                        if (result) photo.analysis.tags = result.tags;
+                        break;
+                    case 'technical':
+                        result = await this.aiService.getTechnicalAnalysis(base64Data);
+                        if (result) photo.analysis.technical = result;
+                        break;
+                    case 'shopping':
+                        result = await this.aiService.getShoppingSuggestion(base64Data);
+                        if (result) photo.analysis.shopping = result;
+                        break;
+                    case 'slideshow':
+                        const otherPhotos = this.state.photos.filter(p => p.id !== photo.id);
+                        if (otherPhotos.length < 1) {
+                            this.showError("Ajoutez plus de photos pour trouver des images similaires.");
+                            return;
+                        }
+                        const similarIdsResponse = await this.aiService.findSimilarPhotos(photo, otherPhotos);
+                        if (similarIdsResponse) {
+                           // The AI might return an object like { "ids": [...] } or just the array [...]
+                           const similarIds = Array.isArray(similarIdsResponse) 
+                               ? similarIdsResponse 
+                               : (typeof similarIdsResponse === 'object' && similarIdsResponse !== null && Object.keys(similarIdsResponse).length > 0 ? similarIdsResponse[Object.keys(similarIdsResponse)[0]] : null);
+
+                           if (Array.isArray(similarIds)) {
+                               const similarPhotos = this.state.photos.filter(p => similarIds.includes(p.id));
+                               const allSlideshowPhotos = [photo, ...similarPhotos];
+                               // Ensure uniqueness based on photo ID
+                               const uniquePhotos = Array.from(new Map(allSlideshowPhotos.map(item => [item.id, item])).values());
+                               
+                               this.setState({ slideshow: { isActive: true, photos: uniquePhotos, currentIndex: 0 }});
+                           } else {
+                                console.error("Unexpected AI response format for similar photos:", similarIdsResponse);
+                                this.showError("La réponse de l'IA pour les photos similaires n'était pas dans le format attendu.");
+                           }
+                        }
+                        break;
+                }
+
+                if (action !== 'slideshow' && result) {
+                    this.setState({ photos: [...this.state.photos] });
+                } else if (action !== 'slideshow' && !result) {
+                    this.showError(`L'analyse pour "${action}" a échoué.`);
+                }
+            },
+            
+            handleApiKeySave(key) {
+                this.setState({ apiKey: key });
+                this.elements.apiKeyInput.value = key;
+                this.elements.saveKeyBtnText.innerHTML = `<i data-lucide="check" style="width:16px; height:16px;"></i>Enregistré!`;
+                lucide.createIcons();
+                setTimeout(() => { this.elements.saveKeyBtnText.innerHTML = `<i data-lucide="save" style="width:16px; height:16px;"></i>Sauvegarder`; lucide.createIcons(); }, 2000);
+            },
+
+            aiService: {
+                async run(parts, isJson = true, loadingMessage = "L'IA réfléchit...") {
+                    if (!app.state.apiKey) { app.showError("Clé API non configurée."); return null; }
+                    app.showLoading(true, loadingMessage);
+                    try {
+                        const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key=${app.state.apiKey}`;
+                        const payload = {
+                            contents: [{ parts }],
+                            generationConfig: isJson ? { responseMimeType: "application/json" } : {}
+                        };
+                        const response = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+                        if (!response.ok) { const errBody = await response.json(); throw new Error(errBody.error?.message || 'Erreur IA'); }
+                        const data = await response.json();
+                        const text = data.candidates[0].content.parts[0].text;
+                        return isJson ? JSON.parse(text.replace(/```json\n?|```/g, '')) : text;
+                    } catch (err) {
+                        console.error("AI Error:", err);
+                        app.showError(`Erreur IA: ${err.message}`);
+                        return null;
+                    } finally {
+                        app.showLoading(false);
+                    }
+                },
+                getCaption: (img) => app.aiService.run([{text: "Décris cette image de manière concise et poétique en une phrase. Réponds en JSON: {\"caption\": \"string\"}"}, {inline_data: { mime_type: "image/jpeg", data: img }}], true, "Génération de la légende..."),
+                getTags: (img) => app.aiService.run([{text: "Suggère 3-5 mots-clés (tags) pertinents pour cette image. Réponds en JSON: {\"tags\": [\"string\"]}"}, {inline_data: { mime_type: "image/jpeg", data: img }}], true, "Recherche de mots-clés..."),
+                getTechnicalAnalysis: (img) => app.aiService.run([{text: "Analyse les aspects techniques de cette photo (composition, lumière, couleurs). Donne un conseil court et actionnable pour l'améliorer. Réponds en JSON: {\"analysis\": \"string\", \"tip\": \"string\"}"}, {inline_data: { mime_type: "image/jpeg", data: img }}], true, "Analyse technique en cours..."),
+                getShoppingSuggestion: (img) => app.aiService.run([{text: "Identifie le principal article achetable dans cette image. Réponds en JSON avec le nom de l'article et une requête de recherche Google concise pour le trouver. Format: {\"itemName\": \"string\", \"searchQuery\": \"string\"}"}, {inline_data: { mime_type: "image/jpeg", data: img }}], true, "Recherche de produits..."),
+                findSimilarPhotos: (basePhoto, candidatePhotos) => {
+                    const parts = [
+                        { text: "La première image est la référence. Parmi les images candidates suivantes (chacune précédée de son ID), lesquelles sont visuellement similaires ? Réponds avec un tableau JSON contenant uniquement les ID des images similaires. Ne renvoie que le tableau JSON." },
+                        { inline_data: { mime_type: "image/jpeg", data: basePhoto.src.split(',')[1] } },
+                    ];
+                    candidatePhotos.forEach(p => {
+                        parts.push({ text: `ID: ${p.id}` });
+                        parts.push({ inline_data: { mime_type: "image/jpeg", data: p.src.split(',')[1] } });
+                    });
+                    return app.aiService.run(parts, true, "Recherche de photos similaires...");
+                }
+            },
+
+            render() {
+                const { elements, state } = this;
+                
+                elements.screens.forEach(s => s.classList.remove('active'));
+                const activeScreenEl = document.getElementById(`screen-${state.activeScreen}`);
+                if (activeScreenEl) activeScreenEl.classList.add('active');
+
+                const activeNavItem = document.querySelector(`.nav-item[data-screen="${state.activeScreen}"]`);
+                if(activeNavItem){
+                    elements.navItems.forEach(item => item.classList.remove('active'));
+                    activeNavItem.classList.add('active');
+                    elements.activeNavIndicator.style.transform = `translateX(${activeNavItem.offsetLeft + (activeNavItem.offsetWidth / 2) - 12}px)`;
+                }
+                
+                elements.navAnalysisBtn.disabled = !state.selectedPhotoId;
+                elements.addPhotosBtnContainer.style.display = state.activeScreen === 'gallery' ? 'block' : 'none';
+
+                if (state.activeScreen === 'gallery') this.renderGallery();
+                else if (state.activeScreen === 'analysis') this.renderAnalysisScreen();
+                else if (state.activeScreen === 'settings') this.renderSettings();
+                
+                this.renderSlideshow();
+                lucide.createIcons();
+            },
+
+            renderGallery() {
+                const { photos } = this.state;
+                this.elements.emptyGalleryPlaceholder.style.display = photos.length > 0 ? 'none' : 'flex';
+                this.elements.photoGrid.style.display = photos.length > 0 ? 'grid' : 'none';
+
+                if (photos.length > 0) {
+                    this.elements.photoGrid.innerHTML = photos.map(photo => `
+                        <div class="photo-item" data-id="${photo.id}">
+                            <img src="${photo.src}" alt="Photo de la galerie" loading="lazy">
+                        </div>
+                    `).join('');
+                }
+            },
+
+            renderAnalysisScreen() {
+                const photo = this.state.photos.find(p => p.id === this.state.selectedPhotoId);
+                if (!photo) {
+                    this.setState({ activeScreen: 'gallery', selectedPhotoId: null });
+                    return;
+                }
+
+                const { caption, tags, technical, shopping } = photo.analysis;
+
+                this.elements.analysisContent.innerHTML = `
+                    <div class="analysis-image-container glass-card" style="padding:0;">
+                        <img src="${photo.src}" alt="Photo en cours d'analyse">
+                    </div>
+                    
+                    <div class="analysis-section glass-card">
+                        ${caption ? `
+                            <div class="analysis-result"><h4>Légende de l'IA</h4><p><em>"${caption}"</em></p></div>
+                        ` : `
+                            <div class="analysis-actions"><button class="btn btn-secondary" data-action="caption"><i data-lucide="captions"></i>Générer une légende</button></div>
+                        `}
+                    </div>
+
+                    <div class="analysis-section glass-card">
+                        ${tags ? `
+                            <div class="analysis-result"><h4>Mots-clés</h4><div style="display:flex; flex-wrap:wrap; gap:0.5rem; margin-top:0.5rem;">${tags.map(tag => `<span class="tag">${tag}</span>`).join('')}</div></div>
+                        ` : `
+                            <div class="analysis-actions"><button class="btn btn-secondary" data-action="tags"><i data-lucide="tags"></i>Suggérer des mots-clés</button></div>
+                        `}
+                    </div>
+
+                    <div class="analysis-section glass-card">
+                        ${technical ? `
+                            <div class="analysis-result"><h4>Analyse Technique</h4><p>${technical.analysis}</p></div>
+                            <div class="analysis-result" style="margin-top:1rem;"><h4>Conseil de l'IA</h4><p>${technical.tip}</p></div>
+                        ` : `
+                            <div class="analysis-actions"><button class="btn btn-secondary" data-action="technical"><i data-lucide="camera"></i>Analyse technique</button></div>
+                        `}
+                    </div>
+
+                    <div class="analysis-section glass-card">
+                         ${shopping ? `
+                            <div class="analysis-result">
+                                <h4>Shopping IA</h4>
+                                <div class="shopping-result">
+                                    <p>Suggestion : ${shopping.itemName}</p>
+                                    <a href="https://www.google.com/search?tbm=shop&q=${encodeURIComponent(shopping.searchQuery)}" target="_blank" class="btn btn-primary"><i data-lucide="search"></i>Chercher</a>
+                                </div>
+                            </div>
+                        ` : `
+                            <div class="analysis-actions"><button class="btn btn-secondary" data-action="shopping"><i data-lucide="shopping-cart"></i>Trouver sur le web</button></div>
+                        `}
+                    </div>
+
+                    <div class="analysis-section glass-card">
+                        <div class="analysis-actions"><button class="btn btn-secondary" data-action="slideshow"><i data-lucide="film"></i>Créer un diaporama similaire</button></div>
+                    </div>
+                `;
+                lucide.createIcons();
+            },
+            
+            renderSettings() {
+                this.elements.apiKeyInput.value = this.state.apiKey || '';
+            },
+
+            renderTheme() {
+                const isDark = this.state.theme === 'dark';
+                this.elements.root.className = isDark ? 'dark' : 'light';
+                this.elements.themeToggleBtn.innerHTML = `<i data-lucide="${isDark ? 'sun' : 'moon'}" style="width:16px; height:16px;"></i><span>Passer en ${isDark ? 'Clair' : 'Sombre'}</span>`;
+                lucide.createIcons();
+            },
+
+            renderSlideshow() {
+                const { isActive, photos, currentIndex } = this.state.slideshow;
+                this.elements.slideshowOverlay.classList.toggle('visible', isActive);
+                if (isActive && photos.length > 0) {
+                    this.elements.slideshowImage.src = photos[currentIndex].src;
+                    this.elements.slideshowCounter.textContent = `${currentIndex + 1} / ${photos.length}`;
+                }
+            },
+
+            navigateSlideshow(direction) {
+                const { photos, currentIndex } = this.state.slideshow;
+                let newIndex = currentIndex + direction;
+                if (newIndex >= photos.length) newIndex = 0;
+                if (newIndex < 0) newIndex = photos.length - 1;
+                this.setState({ slideshow: { currentIndex: newIndex }});
+            },
+
+            showApiKeyModal(visible) { this.elements.apiKeyModal.classList.toggle('visible', visible); },
+            showLoading(visible, message = '') {
+                this.elements.loadingMessage.textContent = message;
+                this.elements.loadingOverlay.classList.toggle('visible', visible);
+            },
+            showError(message) {
+                if (message) {
+                    this.elements.errorMessage.textContent = message;
+                    this.elements.errorBanner.classList.add('visible');
+                    clearTimeout(this.errorTimeout);
+                    this.errorTimeout = setTimeout(() => this.showError(null), 5000);
+                } else {
+                    this.elements.errorBanner.classList.remove('visible');
+                }
+            },
+        };
+
+        app.init();
+    });
+    </script>
+</body>
+</html>
